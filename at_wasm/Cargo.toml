@@ -1,0 +1,44 @@
+[package]
+name = "at_wasm"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "*"
+reqwest-wasm = "*"
+accomplishment_tracker_shared = { path = "../AT_Shared" }
+futures = "*"
+wasm-bindgen-futures = "0.4.40"
+bytes = "*"
+js-sys = "*"
+
+[dependencies.web-sys]
+version = "0.3.69"
+features = [
+  'Document',
+  'Element',
+  'HtmlCollection',
+  'HtmlElement',
+  'HtmlSelectElement',
+  'HtmlInputElement',
+  'InputEvent',
+  'Node',
+  'Window'
+]
+
+[dependencies.chrono]
+version = "0.4.38"
+default-features = true
+features = ["wasmbind", "js-sys"]
+
+[dev-dependencies]
+criterion = { version = "0.5.1" }
+
+[[bench]]
+name = "my_benchmark"
+harness = false

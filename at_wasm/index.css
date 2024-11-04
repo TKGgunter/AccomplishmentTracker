@@ -1,0 +1,97 @@
+
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+/* Style the buttons that are used to open the tab content */
+.tab button {
+  font-size: 20px;
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+/* Style the tab content */
+.tabcontent {
+/*  display: none; TODO turn this back on*/
+  padding: 6px 12px;
+  border-top: none;
+}
+
+/* Style for event tag legend */
+.legend {
+    font-size: 1.1em;
+    padding-left: 16px;
+}
+
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: 3px solid purple;
+}
+
+th {
+  width: 30%;
+  border-bottom: solid 1px #aaaaaa
+}
+
+th, td {
+  padding: 7px;
+  border-right: solid 1px #aaaaaa; 
+  border-left: solid 1px #aaaaaa;
+  font-size: 1.02em;
+  line-height: 1.5;
+}
+
+td {
+  border-bottom: solid 1px #aaaaaa;
+}
+
+.summary th, tr {
+  padding: 7px;
+  font-size: 1.02em;
+  line-height: 1.5;
+  border-left: 0px;
+  border-right: 0px;
+}
+
+.hideContent {
+    overflow: hidden;
+    line-height: 1.3em;
+    height: 5.05em;
+}
+
+.showContent {
+    line-height: 1.3em;
+    height: auto;
+}
+.smallColumn {
+    width: 7%;
+}
+.valueCells{
+   text-align: center;
+}
+a:link {
+  color: pink;
+}
+a:visited {
+  color: pink;
+}
+
