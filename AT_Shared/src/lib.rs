@@ -1,11 +1,13 @@
 #[allow(dead_code)]
 use chrono::{DateTime, Utc};
 use core::slice::Iter;
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use pulldown_cmark::{html, Options, Parser};                                  
+use pulldown_cmark::{html, Options, Parser};
+
+pub mod convert;
 
 // TODO
 // - add comments about the u32 and why we have so many
@@ -14,7 +16,7 @@ use pulldown_cmark::{html, Options, Parser};
 // - clean up unwraps
 // - change the same of repo.
 
-const SERIAL_CODE: &[u8] = b"ATS";
+const SERIAL_CODE: &[u8] = b"ATS ";
 
 // NOTE
 // https://play.rust-lang.org/?version=stable&mode=debug&edition=2021
@@ -22,7 +24,7 @@ const SERIAL_CODE: &[u8] = b"ATS";
 macro_rules! generate_lp { // TODO name
     ($($x:tt),+) => {
         #[repr(u8)]
-        #[derive(PartialEq, Debug, Copy, Clone, Deserialize)]
+        #[derive(PartialEq, Debug, Copy, Clone, Deserialize, Serialize)]
         pub enum LeadershipPrinciples{
         $(
             $x
@@ -51,7 +53,7 @@ macro_rules! generate_lp { // TODO name
                     BiasForAction => { "Bias for Action" },
                     Frugality => { "Frugality" },
                     EarnTrust => { "Earn Trust" },
-                    DeepDive => { "Deep Dive" },
+                    DiveDeep => { "Dive Deep" },
                     HaveBackboneAndCommit => { "Have backbone and Commit" },
                     DeliverResults => { "Deliver Results" },
                     SuccessAndScaleBringBroadResponsibility => {"Success and Scale bring Broad Responsibility" },
@@ -74,7 +76,7 @@ macro_rules! generate_lp { // TODO name
                     BiasForAction => { 9 },
                     Frugality => { 10 },
                     EarnTrust => { 11 },
-                    DeepDive => { 12 },
+                    DiveDeep => { 12 },
                     HaveBackboneAndCommit => { 13 },
                     DeliverResults => { 14 },
                     SuccessAndScaleBringBroadResponsibility => { 15 },
@@ -97,7 +99,7 @@ macro_rules! generate_lp { // TODO name
                     "Bias for Action" => { BiasForAction },
                     "Frugality" => { Frugality },
                     "Earn Trust" => { EarnTrust },
-                    "Deep Dive" => { DeepDive },
+                    "Dive Deep" => { DiveDeep },
                     "Have backbone and Commit" => { HaveBackboneAndCommit },
                     "Deliver Results" => { DeliverResults },
                     "Success and Scale bring Broad Responsibility" => { SuccessAndScaleBringBroadResponsibility },
@@ -120,7 +122,7 @@ generate_lp!(
     BiasForAction,
     Frugality,
     EarnTrust,
-    DeepDive,
+    DiveDeep,
     HaveBackboneAndCommit,
     DeliverResults,
     SuccessAndScaleBringBroadResponsibility,
@@ -135,7 +137,7 @@ impl Default for LeadershipPrinciples {
 }
 
 #[repr(u16)]
-#[derive(Default, Debug, PartialEq, Clone, Copy, Deserialize)]
+#[derive(Default, Debug, PartialEq, Clone, Copy, Deserialize, Serialize)]
 pub enum EventType {
     BarRaise,
     InvestInYourSelf,
@@ -248,7 +250,7 @@ pub struct Event {
 }
 
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Deserialize, Serialize)]
 pub struct TomlEvent {
     pub date: toml::value::Datetime, // NOTE 12 bytes 
     pub leadership_principles: Vec<LeadershipPrinciples>, // TODO Maybe an array or combine also how big
@@ -321,7 +323,7 @@ impl AccomplishmentData {
 pub struct _AccomplishmentData<'a> {
     pub events: &'a [Event],
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct TomlAccomplishmentData {
     pub events: Vec<TomlEvent>,
 }
@@ -366,7 +368,7 @@ pub fn serialize_to_file(data: &AccomplishmentData, filename: &str) -> Result<()
 pub fn deserialize(io: &[u8]) -> Result<_AccomplishmentData, String> {
     let mut cursor = 0;
     // check length
-    for i in 0..3 {
+    for i in 0..4 {
         if io[i] != SERIAL_CODE[i] {
             return Err(format!(
                 "Bad SerialCode {}: {} != {}",
@@ -458,10 +460,23 @@ pub fn deserialize(io: &[u8]) -> Result<_AccomplishmentData, String> {
             ));
         }
 
-        data = unsafe {
+        data = {
             let ptr = r.as_ptr() as *const Event;
-            let slice = std::slice::from_raw_parts(ptr, events_len as usize);
-            _AccomplishmentData { events: slice }
+            unsafe {
+                if ptr.is_null() || !ptr.is_aligned(){
+                    let c = core::mem::align_of_val(&Event::default());
+                    println!("{} {:?}", c, ptr);
+                    _AccomplishmentData { events: &[]}
+                } else {
+                    let _events_len = events_len as usize;
+                    if _events_len >= isize::MAX as usize {
+                        _AccomplishmentData { events: &[] }
+                    } else {
+                        let slice = std::slice::from_raw_parts(ptr, _events_len);
+                        _AccomplishmentData { events: slice }
+                    }
+                }
+            }
         };
     }
 

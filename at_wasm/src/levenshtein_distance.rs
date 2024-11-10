@@ -69,6 +69,58 @@ pub fn levenshtein_dist_word_array(w1: &str, w2: &str) -> usize {
     return array[height][width];
 }
 
+// TODO think about this
+pub fn levenshtein_dist_word_simd(w1: &str, w2: &str) -> usize {
+    if !w1.is_ascii() || !w2.is_ascii() {
+        return levenshtein_dist_word_array(w1, w2);
+    }
+
+    let w1_ascii = w1.as_bytes();
+    let w2_ascii = w2.as_bytes();
+
+    let width = w1_ascii.len();
+    let height = w2_ascii.len();
+
+    let mut array = vec![vec![0u8; width + 1]; height + 1];
+    for i in 1..width + 1 {
+        array[0][i] = i as u8;
+    }
+    for i in 1..height + 1 {
+        array[i][0] = i as u8;
+    }
+
+    use core::arch::x86_64::*;
+
+    let mut temp = [0u8; 16];
+    unsafe {
+        assert!(w2_ascii.len() < 16, "Function doesn't handle words longer than 16 chars.");
+        temp.copy_from_slice(&w1_ascii);
+        let _a =_mm_lddqu_si128(temp.as_ptr() as *const __m128i); 
+
+        temp = [0u8; 16];
+        temp.copy_from_slice(&vec![u8::MAX; width]);
+        let _mask =_mm_lddqu_si128(temp.as_ptr() as *const __m128i); 
+        for it in w2_ascii.iter() {
+
+
+            let mut _b = _mm_set1_epi8(*it as i8);
+            _b = _mm_and_si128(_b, _mask);
+
+            let mut _r = _mm_cmpeq_epi8(_a, _b);
+
+            _r = _mm_andnot_si128(_r, _mm_set1_epi8(1));
+
+            let result: &mut [u8; 16] = std::mem::transmute(&mut _r);
+            for jt in result {
+            }
+
+
+        }
+    }
+    
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
