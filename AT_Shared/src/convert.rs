@@ -118,10 +118,10 @@ fn old_to_new_event(event: &Event) -> TomlEvent {
     let event_type = match event.tags.as_ref() {
         Some(s) => {
             match s.to_lowercase().as_str() { 
-                "bar raiser" => {
+                "bar raising" => {
                     EventType::BarRaise
                 },
-                "invest in your self" => {
+                "invest" => {
                     EventType::InvestInYourSelf
                 }
                 _ => {
