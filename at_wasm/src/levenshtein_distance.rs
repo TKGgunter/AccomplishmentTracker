@@ -69,6 +69,7 @@ pub fn levenshtein_dist_word_array(w1: &str, w2: &str) -> usize {
     return array[height][width];
 }
 
+/*
 // TODO think about this
 pub fn levenshtein_dist_word_simd(w1: &str, w2: &str) -> usize {
     if !w1.is_ascii() || !w2.is_ascii() {
@@ -120,6 +121,7 @@ pub fn levenshtein_dist_word_simd(w1: &str, w2: &str) -> usize {
     
     todo!()
 }
+*/
 
 #[cfg(test)]
 mod tests {

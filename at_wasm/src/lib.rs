@@ -45,15 +45,15 @@ use helper::*;
 // - [X] bug year select does not up date properly.
 // - [X] search render bug
 // - [X] handle markdown
+// - Search for things
+//   - [X] make font larger
+//   - [X] make search faster
+//   - [X] is this the right search function?
 //
 
 // TODO
 // - show more feature
-// - Search for things
-//   - [X] make font larger
-//   - [X] make search faster
-//   - [] is this the right search function?
-// - [~] Move functionality in to different files.
+// - [~] Move functionality into different files.
 // - Clean up TODOs
 // - Clean up warnings
 // - Add descriptive notes
@@ -70,9 +70,8 @@ use helper::*;
 // wasm-pack build --target web
 // python3 -m http.server
 
-// How to build:
-// wasm-pack build --target web
-//TODO can we run this like a server, have the page reload once it is built
+// TODO 
+// can we run this like a server, have the page reload once it is built
 
 const C_BAR_RAISING: &'static str = "#1d6860";
 const C_INVEST_IN_YOURSELF: &'static str = "#555577";
@@ -104,7 +103,9 @@ async fn run() -> Result<(), JsValue> {
     // https://rustwasm.github.io/wasm-bindgen/examples/fetch.html
     //
     // TODO address needs to be generalized.
-    let data_bytes = reqwest_wasm::get("http://0.0.0.0:8000/temp.serialize")
+    console_log!("Document url: {}", document.url().unwrap());
+    let document_url = document.url().expect("Document does not have a url.");
+    let data_bytes = reqwest_wasm::get(document_url + "/temp.serialize")
         .await
         .expect("Failed to retrieve serialized data.")
         .bytes()

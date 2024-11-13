@@ -372,7 +372,7 @@ pub fn deserialize(io: &[u8]) -> Result<_AccomplishmentData, String> {
         if io[i] != SERIAL_CODE[i] {
             return Err(format!(
                 "Bad SerialCode {}: {} != {}",
-                i, io[i], SERIAL_CODE[i]
+                i, io[i] as char, SERIAL_CODE[i] as char
             ));
         }
         cursor += 1;
