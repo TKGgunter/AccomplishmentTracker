@@ -336,7 +336,7 @@ impl TomlAccomplishmentData {
 }
 
 
-/// 3 byte identifier code
+/// 4 byte identifier code
 /// u32 Data struct version
 /// usize Data struct size
 /// u32 Event struct version

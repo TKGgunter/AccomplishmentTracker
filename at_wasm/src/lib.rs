@@ -49,9 +49,13 @@ use helper::*;
 //   - [X] make font larger
 //   - [X] make search faster
 //   - [X] is this the right search function?
+// - [X] event_type is not being set after toml conversion
 //
 
 // TODO
+// - summary is broken - on large site.
+// - year drop down menu ordering
+// - search is not good.
 // - show more feature
 // - [~] Move functionality into different files.
 // - Clean up TODOs
@@ -537,10 +541,10 @@ pub fn render_leadership_summary(
                     0 => {}
                     1..=3 => {
                         // TODO
-                        let _ = tr.set_attribute("background-color", "#7d5a0c");
+                        let _ = th.set_attribute("style", "background-color: #7d5a0c");
                     }
                     _ => {
-                        let _ = tr.set_attribute("background-color", "#7d5a0c");
+                        let _ = th.set_attribute("style", "background-color: #892e44");
                     }
                 }
                 let string = format!("{}", value);
@@ -871,6 +875,10 @@ fn score_event(e: &Event, _query: &str) -> f32 {
         .replace("<h2>", " ")
         .replace("<p>", " ")
         .replace("\n", " ")
+        .replace(" and ", " ")
+        .replace(" a ", " ")
+        .replace(" be ", " ")
+        .replace(" let ", " ")
         .replace("\t", " ");
 
     for it in _summary.split(" ") {
@@ -885,6 +893,10 @@ fn score_event(e: &Event, _query: &str) -> f32 {
         .replace("<h2>", " ")
         .replace("<p>", " ")
         .replace("\n", " ")
+        .replace(" and ", " ")
+        .replace(" a ", " ")
+        .replace(" be ", " ")
+        .replace(" let ", " ")
         .replace("\t", " ");
 
     for it in _details.split(" ") {
@@ -952,7 +964,7 @@ fn update_search_results(input: JsValue, year: usize) {
     // TODO what should the score threshold be.
     // Prehaps it should be relative to the number of characters in the entries.
     //
-    let filter = move |it: &Event| score_event(it, &query) < 2.5;
+    let filter = move |it: &Event| score_event(it, &query) < 1.5;
     let _ = render_events_table_fn(&document, &result_div, &accomplishment_data, &filter);
 }
 

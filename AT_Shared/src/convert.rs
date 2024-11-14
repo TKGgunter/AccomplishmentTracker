@@ -124,6 +124,9 @@ fn old_to_new_event(event: &Event) -> TomlEvent {
                 "invest" => {
                     EventType::InvestInYourSelf
                 }
+                "br" => {
+                    EventType::BarRaise
+                }
                 _ => {
                     println!("unexpected entry: {}", s);
                     EventType::None
