@@ -16,6 +16,10 @@ use log::*;
 mod helper;
 use helper::*;
 
+mod search;
+use search::{construct_document_token_map, query_document_token_map};
+
+
 // NOTE
 // Example can be found below
 // Document/Rust/Sandbox/dom
@@ -50,12 +54,12 @@ use helper::*;
 //   - [X] make search faster
 //   - [X] is this the right search function?
 // - [X] event_type is not being set after toml conversion
+// - [X] search is a little better.
 //
 
 // TODO
 // - summary is broken - on large site.
 // - year drop down menu ordering
-// - search is not good.
 // - show more feature
 // - [~] Move functionality into different files.
 // - Clean up TODOs
@@ -271,7 +275,7 @@ pub fn render_events_table_fn(
     document: &web_sys::Document,
     div: &web_sys::Element,
     at_data: &_AccomplishmentData,
-    fn_pointer: &dyn Fn(&Event) -> bool,
+    fn_pointer: &dyn Fn(&Event, usize) -> bool,
 ) -> Result<(), JsValue> {
     let table = document.create_element("table")?;
     {
@@ -305,8 +309,8 @@ pub fn render_events_table_fn(
 
     {
         let tbody = document.create_element("tbody")?;
-        for it in at_data.events.iter() {
-            if fn_pointer(it) == false {
+        for (i, it) in at_data.events.iter().enumerate() {
+            if fn_pointer(it, i) == false {
                 continue;
             }
             let tr = document.create_element("tr")?;
@@ -341,7 +345,7 @@ pub fn render_events_table_fn(
                 let _ = tr.append_child(&td);
             }
 
-            tbody.append_child(&tr);
+            let _ = tbody.append_child(&tr);
 
             {
                 // TODO call backs show more/show less
@@ -353,16 +357,16 @@ pub fn render_events_table_fn(
                         continue;
                     }
                     let string = format!("{}, ", jt.to_str());
-                    td.append_with_str_1(&string);
+                    let _ = td.append_with_str_1(&string);
                 }
-                tr.append_child(&td);
+                let _ = tr.append_child(&td);
             }
 
-            tbody.append_child(&tr);
+            let _ = tbody.append_child(&tr);
         }
-        table.append_child(&tbody);
+        let _ = table.append_child(&tbody);
     }
-    div.append_child(&table);
+    let _ = div.append_child(&table);
 
     Ok(())
 }
@@ -374,7 +378,7 @@ pub fn render_events_table(
     year: usize,
     month: usize,
 ) -> Result<(), JsValue> {
-    let filter = |it: &Event| it.date.year() as usize == year && it.date.month0() as usize == month;
+    let filter = |it: &Event, _: usize| it.date.year() as usize == year && it.date.month0() as usize == month;
     render_events_table_fn(document, div, at_data, &filter)
 }
 
@@ -851,73 +855,6 @@ pub fn get_years() -> js_sys::Array {
     array
 }
 
-/// TODO how does this work?
-/// Function scores how well the query matches the text in the event.
-/// It takes the minimum levenshtein distance for each word in the query compared to each word in
-/// the summary and details entry of the event.
-/// Scores from details and summary are weighed equally.
-/// It does not attempt to match complete phrases.
-fn score_event(e: &Event, _query: &str) -> f32 {
-    if _query.len() == 0 {
-        return 0f32;
-    }
-
-    let mut query = _query.to_string();
-    query.make_ascii_lowercase();
-
-    let mut _text_set = HashSet::new();
-
-    // TODO this should be done in a separate fast function.
-    let mut _summary = e.summary.as_str().to_string();
-    _summary.make_ascii_lowercase();
-    _summary = _summary.replace("</", " ")
-        .replace("<h3>", " ")
-        .replace("<h2>", " ")
-        .replace("<p>", " ")
-        .replace("\n", " ")
-        .replace(" and ", " ")
-        .replace(" a ", " ")
-        .replace(" be ", " ")
-        .replace(" let ", " ")
-        .replace("\t", " ");
-
-    for it in _summary.split(" ") {
-        _text_set.insert(it);
-    }
-
-    // TODO this should be done in a separate fast function.
-    let mut _details = e.details.as_str().to_string();
-    _details.make_ascii_lowercase();
-    _details= _details.replace("</", " ")
-        .replace("<h3>", " ")
-        .replace("<h2>", " ")
-        .replace("<p>", " ")
-        .replace("\n", " ")
-        .replace(" and ", " ")
-        .replace(" a ", " ")
-        .replace(" be ", " ")
-        .replace(" let ", " ")
-        .replace("\t", " ");
-
-    for it in _details.split(" ") {
-        _text_set.insert(it);
-    }
-
-    let mut score = f32::MAX;
-    for jt in query.split(" ") {
-        // TODO skip simple words
-
-        let mut _score = f32::MAX;
-        for it in _text_set.iter() {
-            let l = levenshtein_distance::levenshtein_dist_word(jt, it) as f32;
-            _score = l / (1f32 + (jt.len() as f32 - it.len() as f32).abs());
-        }
-        score = score.min(_score);
-    }
-    // TODO turn off for production.
-    console_log!("Score: {} {:?}", score, _text_set);
-    return score;
-}
 
 fn update_search_results(input: JsValue, year: usize) {
     // TODO
@@ -950,10 +887,7 @@ fn update_search_results(input: JsValue, year: usize) {
             panic!();
         }
     }
-    // TODO we should sort the data.
     console_log!("Update the search results. {:?}", query);
-    //let v = search_score_events(&accomplishment_data, &query);
-    //console_log!("Got scores {:?}", v);
 
     // Clears the contents of the search_results html element.
     let result_div = document
@@ -961,10 +895,13 @@ fn update_search_results(input: JsValue, year: usize) {
         .unwrap();
     result_div.set_inner_html("");
 
-    // TODO what should the score threshold be.
-    // Prehaps it should be relative to the number of characters in the entries.
-    //
-    let filter = move |it: &Event| score_event(it, &query) < 1.5;
+
+    // let filter = move |it: &Event, _: usize| score_event(it, &query) < 1.5;
+    let searchmap = construct_document_token_map(accomplishment_data.events);
+    console_log!("{:?}", searchmap);
+    let q_results = query_document_token_map(&query, &searchmap);
+
+    let filter = move |_: &Event, i: usize| q_results.contains(&i);
     let _ = render_events_table_fn(&document, &result_div, &accomplishment_data, &filter);
 }
 
