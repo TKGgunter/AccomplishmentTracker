@@ -21,14 +21,26 @@ bytes = "*"
 js-sys = "*"
 
 [dependencies.web-sys]
-version = "0.3.69"
+version = "0.3.72"
 features = [
   'Document',
   'Element',
+  'HtmlAnchorElement',
+  'HtmlBrElement',
+  'HtmlButtonElement',
+  'HtmlCanvasElement',
   'HtmlCollection',
+  'HtmlDivElement',
   'HtmlElement',
-  'HtmlSelectElement',
+  'HtmlFontElement',
   'HtmlInputElement',
+  'HtmlOptionElement',
+  'HtmlParagraphElement',
+  'HtmlSelectElement',
+  'HtmlSelectElement',
+  'HtmlTableCellElement',
+  'HtmlTableElement',
+  'HtmlTableRowElement',
   'InputEvent',
   'Node',
   'Window'

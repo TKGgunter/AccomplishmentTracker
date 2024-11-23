@@ -58,12 +58,14 @@ pub fn levenshtein_dist_word_array(w1: &str, w2: &str) -> usize {
             } else {
                 sub_cost = 1;
             }
-            array[i][j] += *[array[i - 1][j - 1] + sub_cost,
-                             array[i][j - 1] + 1,
-                             array[i - 1][j] + 1]
-                .iter()
-                .min()
-                .unwrap();
+            array[i][j] += *[
+                array[i - 1][j - 1] + sub_cost,
+                array[i][j - 1] + 1,
+                array[i - 1][j] + 1,
+            ]
+            .iter()
+            .min()
+            .unwrap();
         }
     }
     return array[height][width];
@@ -96,11 +98,11 @@ pub fn levenshtein_dist_word_simd(w1: &str, w2: &str) -> usize {
     unsafe {
         assert!(w2_ascii.len() < 16, "Function doesn't handle words longer than 16 chars.");
         temp.copy_from_slice(&w1_ascii);
-        let _a =_mm_lddqu_si128(temp.as_ptr() as *const __m128i); 
+        let _a =_mm_lddqu_si128(temp.as_ptr() as *const __m128i);
 
         temp = [0u8; 16];
         temp.copy_from_slice(&vec![u8::MAX; width]);
-        let _mask =_mm_lddqu_si128(temp.as_ptr() as *const __m128i); 
+        let _mask =_mm_lddqu_si128(temp.as_ptr() as *const __m128i);
         for it in w2_ascii.iter() {
 
 
@@ -118,7 +120,7 @@ pub fn levenshtein_dist_word_simd(w1: &str, w2: &str) -> usize {
 
         }
     }
-    
+
     todo!()
 }
 */
@@ -130,7 +132,11 @@ mod tests {
     #[test]
     fn test_levenshtein_recursive() {
         assert!(levenshtein_dist_word_recursive("", "") == 0);
-        assert!(levenshtein_dist_word_recursive("ab", "ab") == 0, "{}", levenshtein_dist_word_recursive("ab", "ab"));
+        assert!(
+            levenshtein_dist_word_recursive("ab", "ab") == 0,
+            "{}",
+            levenshtein_dist_word_recursive("ab", "ab")
+        );
         assert!(levenshtein_dist_word_recursive("cat", "cats") == 1,);
         assert!(levenshtein_dist_word_recursive("123", "abc") == 3);
         assert!(levenshtein_dist_word_recursive("qwyg", "dev!") == 4);
@@ -139,11 +145,20 @@ mod tests {
     #[test]
     fn test_levenshtein_array() {
         assert!(levenshtein_dist_word_array("", "") == 0);
-        assert!(levenshtein_dist_word_array("ab", "ab") == 0, "{}", levenshtein_dist_word_array("ab", "ab"));
+        assert!(
+            levenshtein_dist_word_array("ab", "ab") == 0,
+            "{}",
+            levenshtein_dist_word_array("ab", "ab")
+        );
         assert!(levenshtein_dist_word_array("cat", "cats") == 1);
         assert!(levenshtein_dist_word_array("123", "abc") == 3);
         assert!(levenshtein_dist_word_array("qwyg", "dev!") == 4);
         //assert!(levenshtein_dist_word_array("qwrpz", "I") == 5, "{}=/= {}", levenshtein_dist_word_array("qwrpz", "I"), 5);
-        assert!(levenshtein_dist_word_array("I", "qwrpz") == 5, "{}=/= {}", levenshtein_dist_word_array("qwrpz", "I"), 5);
+        assert!(
+            levenshtein_dist_word_array("I", "qwrpz") == 5,
+            "{}=/= {}",
+            levenshtein_dist_word_array("qwrpz", "I"),
+            5
+        );
     }
 }

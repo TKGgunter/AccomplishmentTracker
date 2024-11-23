@@ -19,6 +19,12 @@ use helper::*;
 mod search;
 use search::{construct_document_token_map, query_document_token_map};
 
+mod dom_helper;
+use dom_helper::{
+    create_anchor, create_br, create_div, create_font, create_input, create_option,
+    create_paragraph, create_select, create_table, create_th, create_tr, create_td,
+    create_button, create_canvas
+};
 
 // NOTE
 // Example can be found below
@@ -55,6 +61,7 @@ use search::{construct_document_token_map, query_document_token_map};
 //   - [X] is this the right search function?
 // - [X] event_type is not being set after toml conversion
 // - [X] search is a little better.
+// - [X] use dyn_into::<web_sys::HtmlElement> for better type handling.
 //
 
 // TODO
@@ -78,7 +85,7 @@ use search::{construct_document_token_map, query_document_token_map};
 // wasm-pack build --target web
 // python3 -m http.server
 
-// TODO 
+// TODO
 // can we run this like a server, have the page reload once it is built
 
 const C_BAR_RAISING: &'static str = "#1d6860";
@@ -135,8 +142,8 @@ async fn run() -> Result<(), JsValue> {
 
         console_log!("Attempting to render tracker.");
         match render_accomplishment_tracker(&document, &body, &_data) {
-            Err(_) => {
-                console_log!("Tracker render failure.");
+            Err(e) => {
+                console_log!("Tracker render failure. {:?}", e);
                 return Ok(());
             }
             _ => {}
@@ -158,14 +165,14 @@ pub fn render_accomplishment_tracker(
 ) -> Result<(), JsValue> {
     let years = collect_unique_years(at_data);
     let active_year = *years.iter().max().unwrap();
-    let select_year_div = document.create_element("div")?;
+    // TODO
+    let select_year_div = create_div(document)?;
 
     console_log!("{} {:?}", active_year, years);
     let _ = render_year_dropdown(document, &select_year_div, &years, active_year);
     let _ = body.append_child(&select_year_div);
     for year in years.iter() {
-
-        let div_year = document.create_element("div")?;
+        let div_year = create_div(document)?;
         div_year.set_class_name("div_year");
         div_year.set_id(&format!("div_{}", year));
         if active_year != *year {
@@ -193,7 +200,7 @@ pub fn render_accomplishment_tracker(
                 continue;
             }
             let month_str = Month::try_from(month as u8 + 1).unwrap().name();
-            let div_month = document.create_element("div")?;
+            let div_month = create_div(document)?;
             div_month.set_id(&format!("month_{}_{}", month_str, year));
             // TODO set a class so that we can turn off months
             div_month.set_class_name("month_class"); // TODO class name is a misnomer -- make this
@@ -205,7 +212,7 @@ pub fn render_accomplishment_tracker(
             render_legend(document, &div_month)?;
 
             let data = collect_leadership_statistic(&at_data, *year, month);
-            let div = document.create_element("div")?;
+            let div = create_div(document)?;
             div.set_class_name("tabcontent");
             div.set_id(&format!("monthly_log_{}_{}", month_str, year)); // TODO this name should be associated with an actual month.
             render_leadership_summary(document, &div, &data)?;
@@ -216,17 +223,17 @@ pub fn render_accomplishment_tracker(
         }
 
         {
-            let div_summary = document.create_element("div")?;
+            let div_summary = create_div(document)?;
             div_summary.set_id(&format!("summary_{}", year));
             div_summary.set_class_name("month_class");
             let _ = div_summary.set_attribute("style", "display: none");
             {
                 console_log!("Creating canvas ctx.");
-                let canvas_principles_by_year = document.create_element("canvas")?;
+                let canvas_principles_by_year = create_canvas(document)?;
                 canvas_principles_by_year.set_id(&format!("canvas_principles_{}", year));
                 let _ = div_summary.append_child(&canvas_principles_by_year);
 
-                let canvas_principles_by_year = document.create_element("canvas")?;
+                let canvas_principles_by_year = create_canvas(document)?;
                 canvas_principles_by_year.set_id(&format!("canvas_principle_month_{}", year));
                 let _ = div_summary.append_child(&canvas_principles_by_year);
             }
@@ -235,7 +242,7 @@ pub fn render_accomplishment_tracker(
 
         {
             // TODO we are creating multiple searches. There should only be one.
-            let div_search = document.create_element("div")?;
+            let div_search = create_div(document)?;
             div_search.set_id(&format!("search_{}", year));
             div_search.set_class_name("month_class");
             let _ = div_search.set_attribute("style", "display: none");
@@ -245,18 +252,18 @@ pub fn render_accomplishment_tracker(
                 let a = Closure::<dyn Fn(JsValue)>::new(move |input| {
                     update_search_results(input, _year)
                 }); //TODO
-                let textbox = document.create_element("input")?;
-                let _ = textbox.set_attribute("placeholder", "Type word or phrase.");
+                let textbox = create_input(document)?;
+                let _ = textbox.set_placeholder("Type word or phrase.");
+                let _ = textbox.set_type("search");
+                let _ = textbox.set_size(32);
                 let _ = textbox.set_attribute("style", "font-size: 150%; align-items: center");
-                let _ = textbox.set_attribute("type", "search");
-                let _ = textbox.set_attribute("size", "32");
                 textbox.set_id(&format!("search_textbox_{}", year));
 
                 let _ =
                     textbox.add_event_listener_with_callback("input", a.as_ref().unchecked_ref());
                 let _ = div_search.append_child(&textbox);
 
-                let result_div = document.create_element("div")?;
+                let result_div = create_div(document)?;
                 result_div.set_id(&format!("search_results_{}", year));
                 result_div.set_class_name("search_class");
                 let _ = result_div.set_attribute("style", "display: block");
@@ -277,30 +284,30 @@ pub fn render_events_table_fn(
     at_data: &_AccomplishmentData,
     fn_pointer: &dyn Fn(&Event, usize) -> bool,
 ) -> Result<(), JsValue> {
-    let table = document.create_element("table")?;
+    let table = create_table(document)?;
     {
         // NOTE: Header
-        let tr = document.create_element("tr")?;
+        let tr = create_tr(document)?;
         {
-            let th = document.create_element("th")?;
+            let th = create_th(document)?;
             th.set_class_name("smallColumn");
             th.set_text_content(Some("Date"));
             let _ = tr.append_child(&th);
         }
         {
-            let th = document.create_element("th")?;
-            let _ = th.set_attribute("width", "22%");
+            let th = create_th(document)?;
+            let _ = th.set_width("22%");
             th.set_text_content(Some("Summary"));
             let _ = tr.append_child(&th);
         }
         {
-            let th = document.create_element("th")?;
+            let th = create_th(document)?;
             th.set_text_content(Some("Details"));
             let _ = tr.append_child(&th);
         }
         {
-            let th = document.create_element("th")?;
-            let _ = th.set_attribute("width", "20%");
+            let th = create_th(document)?;
+            let _ = th.set_width("20%");
             th.set_text_content(Some("Amazon Leadership Principles"));
             let _ = tr.append_child(&th);
         }
@@ -308,24 +315,25 @@ pub fn render_events_table_fn(
     }
 
     {
+        // TODO what html element is this associated with.
         let tbody = document.create_element("tbody")?;
         for (i, it) in at_data.events.iter().enumerate() {
             if fn_pointer(it, i) == false {
                 continue;
             }
-            let tr = document.create_element("tr")?;
+            let tr = create_tr(document)?;
             match it.event_type {
                 EventType::BarRaise => {
-                    let _ = tr.set_attribute("bgcolor", C_BAR_RAISING);
+                    let _ = tr.set_bg_color(C_BAR_RAISING);
                 }
                 EventType::InvestInYourSelf => {
-                    let _ = tr.set_attribute("bgcolor", C_INVEST_IN_YOURSELF);
+                    let _ = tr.set_bg_color(C_INVEST_IN_YOURSELF);
                 }
                 EventType::None => {}
             }
 
             {
-                let td = document.create_element("td")?;
+                let td = create_td(document)?;
                 td.set_class_name("valueCells");
                 let date_string = it.date.format("%Y-%m-%d").to_string();
                 td.set_text_content(Some(&date_string));
@@ -333,14 +341,14 @@ pub fn render_events_table_fn(
             }
 
             {
-                let td = document.create_element("td")?;
+                let td = create_td(document)?;
                 td.set_inner_html(&it.summary.as_str());
                 let _ = tr.append_child(&td);
             }
 
             {
                 // TODO call backs show more show less
-                let td = document.create_element("td")?;
+                let td = create_td(document)?;
                 td.set_inner_html(&it.details.as_str());
                 let _ = tr.append_child(&td);
             }
@@ -349,7 +357,7 @@ pub fn render_events_table_fn(
 
             {
                 // TODO call backs show more/show less
-                let td = document.create_element("td")?;
+                let td = create_td(document)?;
                 td.set_class_name("valueCells");
                 for jt in it.leadership_principles.iter() {
                     // TODO remove duplets
@@ -378,18 +386,20 @@ pub fn render_events_table(
     year: usize,
     month: usize,
 ) -> Result<(), JsValue> {
-    let filter = |it: &Event, _: usize| it.date.year() as usize == year && it.date.month0() as usize == month;
+    let filter = |it: &Event, _: usize| {
+        it.date.year() as usize == year && it.date.month0() as usize == month
+    };
     render_events_table_fn(document, div, at_data, &filter)
 }
 
 pub fn render_selection_by_date_menu(
     document: &web_sys::Document,
-    body: &web_sys::Element,
+    body: &web_sys::HtmlDivElement,
     data: &[bool],
     active_month: usize,
     year: usize,
 ) -> Result<(), JsValue> {
-    let menu_div = document.create_element("div")?; // TODO move outside and replace body
+    let menu_div = create_div(document)?; // TODO move outside and replace body
     menu_div.set_class_name("tab");
     menu_div.set_id(&format!("month_year_menu_{}", year));
 
@@ -397,7 +407,7 @@ pub fn render_selection_by_date_menu(
         if *it {
             let month = Month::try_from(i as u8 + 1).unwrap().name();
 
-            let button = document.create_element("button")?;
+            let button = create_button(document)?;
             button.set_id(&format!("button_{}_{}", month, year));
             if i == active_month {
                 button.set_class_name("tablinks active"); // TODO we need better names
@@ -415,7 +425,7 @@ pub fn render_selection_by_date_menu(
     }
 
     {
-        let button = document.create_element("button")?;
+        let button = create_button(document)?;
         button.set_id(&format!("button_summary_{}", year));
         button.set_text_content(Some("Summary"));
 
@@ -427,7 +437,7 @@ pub fn render_selection_by_date_menu(
     }
 
     {
-        let button = document.create_element("button")?;
+        let button = create_button(document)?;
         button.set_id(&format!("button_search_{}", year));
         button.set_text_content(Some("Search"));
 
@@ -447,7 +457,7 @@ pub fn render_selection_by_date_menu(
 
 pub fn render_year_dropdown(
     document: &web_sys::Document,
-    menu_div: &web_sys::Element,
+    menu_div: &web_sys::HtmlDivElement,
     years: &HashSet<usize>,
     input_year: usize,
 ) -> Result<(), JsValue> {
@@ -457,9 +467,9 @@ pub fn render_year_dropdown(
     let a = Closure::<dyn Fn()>::new(move || set_year_option(input_year));
     let year_selection = {
         match document.get_element_by_id("year_selection") {
-            Some(ys) => ys,
+            Some(ys) => ys.dyn_into::<web_sys::HtmlSelectElement>().unwrap(),
             None => {
-                let year_selection = document.create_element("select")?;
+                let year_selection = create_select(document)?;
                 let _ = year_selection.set_attribute(
                     "style",
                     "font-size: 2em; float: right; padding-right: 50px; padding-top: 8px",
@@ -468,15 +478,18 @@ pub fn render_year_dropdown(
                 let _ = year_selection
                     .add_event_listener_with_callback("change", a.as_ref().unchecked_ref());
                 for year in years.iter() {
+                    // TODO I don't think we need to do this any more.
+                    // The years are provided by a hashset now we no longer use a fixed sided
+                    // array.
                     if *year == 0 {
                         break;
                     }
-                    let year_option = document.create_element("option")?;
+                    let year_option = create_option(document)?;
                     let year_string = format!("{}", year);
                     year_option.set_text_content(Some(&year_string));
 
                     if *year == *max_year {
-                        let _ = year_option.set_attribute("selected", "selected");
+                        let _ = year_option.set_selected(true);
                     }
                     let _ = year_selection.append_child(&year_option);
                 }
@@ -502,14 +515,14 @@ pub fn render_leadership_summary(
     console_log!("begin summary.");
     // TODO move div outside and input the div in place of body.
     {
-        let table = document.create_element("table")?;
+        let table = create_table(document)?;
         let _ = table.set_attribute("style", "font-size:12px"); // TODO
         {
-            let tr = document.create_element("tr")?;
+            let tr = create_tr(document)?;
             {
-                let th = document.create_element("th")?;
+                let th = create_th(document)?;
                 let _ = th.set_attribute("style", "font-size:150%"); // TODO
-                let _ = th.set_attribute("colspan", "16"); // TODO
+                let _ = th.set_col_span(16); // TODO
                 let _ = th.set_text_content(Some("Monthly Summary"));
 
                 let _ = tr.append_child(&th);
@@ -517,14 +530,14 @@ pub fn render_leadership_summary(
             let _ = table.append_child(&tr);
 
             // TODO: describe what happening here.
-            let tr = document.create_element("tr")?;
+            let tr = create_tr(document)?;
             tr.set_class_name("summary");
             for it in LeadershipPrinciples::iterator() {
                 if *it == LeadershipPrinciples::Empty {
                     continue;
                 }
 
-                let th = document.create_element("th")?;
+                let th = create_th(document)?;
                 th.set_text_content(Some(it.to_str()));
 
                 let _ = tr.append_child(&th);
@@ -532,23 +545,23 @@ pub fn render_leadership_summary(
             let _ = table.append_child(&tr);
 
             // TODO: describe what happening here.
-            let tr = document.create_element("tr")?;
+            let tr = create_tr(document)?;
             tr.set_class_name("summary");
             for it in LeadershipPrinciples::iterator() {
                 if *it == LeadershipPrinciples::Empty {
                     continue;
                 }
 
-                let th = document.create_element("th")?;
+                let th = create_th(document)?;
                 let value = data[*it as usize];
                 match value {
                     0 => {}
                     1..=3 => {
                         // TODO
-                        let _ = th.set_attribute("style", "background-color: #7d5a0c");
+                        let _ = th.set_bg_color("#7d5a0c");
                     }
                     _ => {
-                        let _ = th.set_attribute("style", "background-color: #892e44");
+                        let _ = th.set_bg_color("#892e44");
                     }
                 }
                 let string = format!("{}", value);
@@ -567,32 +580,32 @@ pub fn render_leadership_summary(
 }
 
 pub fn render_legend(document: &web_sys::Document, body: &web_sys::Element) -> Result<(), JsValue> {
-    let p = document.create_element("p")?;
+    let p = create_paragraph(&document)?;
     {
         p.set_class_name("legend");
         p.set_text_content(Some("Bar raising moment - "));
-        let font = document.create_element("font")?;
-        let _ = font.set_attribute("color", C_BAR_RAISING);
+        let font = create_font(&document)?;
+        let _ = font.set_color(C_BAR_RAISING);
         font.set_text_content(Some("  █"));
         let _ = p.append_child(&font);
 
-        let br = document.create_element("br")?;
+        let br = create_br(&document)?;
         let _ = p.append_child(&br);
 
         p.append_with_str_1("Invest in yourself - ")?;
-        let font = document.create_element("font")?;
-        let _ = font.set_attribute("color", C_INVEST_IN_YOURSELF);
+        let font = create_font(&document)?;
+        let _ = font.set_color(C_INVEST_IN_YOURSELF);
         font.set_text_content(Some("  █"));
         let _ = p.append_child(&font);
     }
     body.append_child(&p)?;
 
-    let p = document.create_element("p")?;
+    let p = create_paragraph(&document)?;
     {
         p.set_class_name("legend");
         p.set_text_content(Some("If you have feedback please follow this "));
-        let a = document.create_element("a")?;
-        let _ = a.set_attribute("href", "https://quip-amazon.com/yil8AxIlg78u/Accomplishment-and-Invest-in-Yourself-Tracker-Thoth#temp:C:LfXc7ddf386401743d0a4944584c"); // TODO this link url should be global
+        let a = create_anchor(&document)?;
+        let _ = a.set_href("https://quip-amazon.com/yil8AxIlg78u/Accomplishment-and-Invest-in-Yourself-Tracker-Thoth#temp:C:LfXc7ddf386401743d0a4944584c"); // TODO this link url should be global
         a.set_text_content(Some("link"));
         p.append_child(&a)?;
         p.append_with_str_1(".")?;
@@ -855,7 +868,6 @@ pub fn get_years() -> js_sys::Array {
     array
 }
 
-
 fn update_search_results(input: JsValue, year: usize) {
     // TODO
     let window = web_sys::window().expect("no global `window` exists");
@@ -895,7 +907,6 @@ fn update_search_results(input: JsValue, year: usize) {
         .unwrap();
     result_div.set_inner_html("");
 
-
     // let filter = move |it: &Event, _: usize| score_event(it, &query) < 1.5;
     let searchmap = construct_document_token_map(accomplishment_data.events);
     console_log!("{:?}", searchmap);
@@ -904,4 +915,3 @@ fn update_search_results(input: JsValue, year: usize) {
     let filter = move |_: &Event, i: usize| q_results.contains(&i);
     let _ = render_events_table_fn(&document, &result_div, &accomplishment_data, &filter);
 }
-
