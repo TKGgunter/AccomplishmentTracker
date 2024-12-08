@@ -25,6 +25,10 @@ pub fn construct_document_token_map(events: &[Event]) -> DocumentTokenMap {
             .replace("<h3>", " ")
             .replace("</h3>", " ")
             .replace("<h2>", " ")
+            .replace("<em>", " ")
+            .replace("</em>", " ")
+            .replace("<b>", " ")
+            .replace("</b>", " ")
             .replace("<p>", " ")
             .replace("</p>", " ")
             .replace("\n", " ")
@@ -33,6 +37,9 @@ pub fn construct_document_token_map(events: &[Event]) -> DocumentTokenMap {
             .replace(",", " ");
 
         for it in details_string.split(" ") {
+            if it.len() == 0 {
+                continue;
+            }
             match rv.get_mut(it) {
                 Some(v) => {
                     v.insert(i_event);
@@ -48,6 +55,10 @@ pub fn construct_document_token_map(events: &[Event]) -> DocumentTokenMap {
             .replace("<h3>", " ")
             .replace("</h3>", " ")
             .replace("<h2>", " ")
+            .replace("<em>", " ")
+            .replace("</em>", " ")
+            .replace("<b>", " ")
+            .replace("</b>", " ")
             .replace("<p>", " ")
             .replace("</p>", " ")
             .replace("\n", " ")
@@ -56,6 +67,9 @@ pub fn construct_document_token_map(events: &[Event]) -> DocumentTokenMap {
             .replace(",", " ");
 
         for it in summary_string.split(" ") {
+            if it.len() == 0 {
+                continue;
+            }
             match rv.get_mut(it) {
                 Some(v) => {
                     v.insert(i_event);
@@ -73,15 +87,21 @@ pub fn construct_document_token_map(events: &[Event]) -> DocumentTokenMap {
     return rv;
 }
 
-pub fn query_document_token_map(query: &str, map: &DocumentTokenMap) -> HashSet<usize> {
+pub fn query_document_token_map(_query: &str, map: &DocumentTokenMap) -> HashSet<usize> {
     // Simple - Replace with l-distance
+    let query = _query.to_string().to_ascii_lowercase();
     let mut words: Vec<&str> = query.split(" ").collect();
     words.dedup();
+    log::console_log!("query: {:?}", words);
+
     // TODO use levenshtein distance instead of a direct compare.
     // let l = levenshtein_distance::levenshtein_dist_word(jt, it) as f32;
 
     let mut indices = HashSet::new();
     for it in words.iter() {
+        if it.len() == 0 {
+            continue;
+        }
         for jt in map.keys() {
             if it == jt {
                 let l = map.get(jt).unwrap();

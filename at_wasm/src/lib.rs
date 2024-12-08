@@ -62,11 +62,15 @@ use dom_helper::{
 // - [X] event_type is not being set after toml conversion
 // - [X] search is a little better.
 // - [X] use dyn_into::<web_sys::HtmlElement> for better type handling.
+// - [X] make search better.
+//    - [X] Search keep empty strings as keys. Additionally query was not lower case. With these changes
+//    search is a bit better.
 //
 
 // TODO
 // - summary is broken - on large site.
 // - year drop down menu ordering
+// - use github actions to auto compile wasm script
 // - show more feature
 // - [~] Move functionality into different files.
 // - Clean up TODOs
@@ -116,10 +120,10 @@ async fn run() -> Result<(), JsValue> {
     // NOTE reqwest_wasm seem to take a long time to compile test w/out.
     // Instead we can use web_sys instead but it will take some work to get the bytes
     // https://rustwasm.github.io/wasm-bindgen/examples/fetch.html
-    //
-    // TODO address needs to be generalized.
     console_log!("Document url: {}", document.url().unwrap());
     let document_url = document.url().expect("Document does not have a url.");
+
+    // TODO update the name for the serialized file.
     let data_bytes = reqwest_wasm::get(document_url + "/temp.serialize")
         .await
         .expect("Failed to retrieve serialized data.")
@@ -170,7 +174,7 @@ pub fn render_accomplishment_tracker(
 
     console_log!("{} {:?}", active_year, years);
     let _ = render_year_dropdown(document, &select_year_div, &years, active_year);
-    let _ = body.append_child(&select_year_div);
+    let _ = body.append_child(&select_year_div)?;
     for year in years.iter() {
         let div_year = create_div(document)?;
         div_year.set_class_name("div_year");
@@ -178,7 +182,7 @@ pub fn render_accomplishment_tracker(
         if active_year != *year {
             let _ = div_year.set_attribute("style", "display: none");
         }
-        let _ = body.append_child(&div_year);
+        let _ = body.append_child(&div_year)?;
 
         let uq_months = collect_unique_months_by_year(at_data, *year);
         let active_month = {
@@ -218,8 +222,8 @@ pub fn render_accomplishment_tracker(
             render_leadership_summary(document, &div, &data)?;
             render_events_table(document, &div, at_data, *year, month)?;
 
-            let _ = div_month.append_child(&div);
-            let _ = div_year.append_child(&div_month);
+            let _ = div_month.append_child(&div)?;
+            let _ = div_year.append_child(&div_month)?;
         }
 
         {
@@ -231,13 +235,13 @@ pub fn render_accomplishment_tracker(
                 console_log!("Creating canvas ctx.");
                 let canvas_principles_by_year = create_canvas(document)?;
                 canvas_principles_by_year.set_id(&format!("canvas_principles_{}", year));
-                let _ = div_summary.append_child(&canvas_principles_by_year);
+                let _ = div_summary.append_child(&canvas_principles_by_year)?;
 
                 let canvas_principles_by_year = create_canvas(document)?;
                 canvas_principles_by_year.set_id(&format!("canvas_principle_month_{}", year));
-                let _ = div_summary.append_child(&canvas_principles_by_year);
+                let _ = div_summary.append_child(&canvas_principles_by_year)?;
             }
-            let _ = div_year.append_child(&div_summary);
+            let _ = div_year.append_child(&div_summary)?;
         }
 
         {
@@ -261,17 +265,17 @@ pub fn render_accomplishment_tracker(
 
                 let _ =
                     textbox.add_event_listener_with_callback("input", a.as_ref().unchecked_ref());
-                let _ = div_search.append_child(&textbox);
+                let _ = div_search.append_child(&textbox)?;
 
                 let result_div = create_div(document)?;
                 result_div.set_id(&format!("search_results_{}", year));
                 result_div.set_class_name("search_class");
                 let _ = result_div.set_attribute("style", "display: block");
 
-                let _ = div_search.append_child(&result_div);
+                let _ = div_search.append_child(&result_div)?;
                 a.forget();
             }
-            let _ = div_year.append_child(&div_search);
+            let _ = div_year.append_child(&div_search)?;
         }
     }
 
@@ -292,26 +296,26 @@ pub fn render_events_table_fn(
             let th = create_th(document)?;
             th.set_class_name("smallColumn");
             th.set_text_content(Some("Date"));
-            let _ = tr.append_child(&th);
+            let _ = tr.append_child(&th)?;
         }
         {
             let th = create_th(document)?;
             let _ = th.set_width("22%");
             th.set_text_content(Some("Summary"));
-            let _ = tr.append_child(&th);
+            let _ = tr.append_child(&th)?;
         }
         {
             let th = create_th(document)?;
             th.set_text_content(Some("Details"));
-            let _ = tr.append_child(&th);
+            let _ = tr.append_child(&th)?;
         }
         {
             let th = create_th(document)?;
             let _ = th.set_width("20%");
             th.set_text_content(Some("Amazon Leadership Principles"));
-            let _ = tr.append_child(&th);
+            let _ = tr.append_child(&th)?;
         }
-        let _ = table.append_child(&tr);
+        let _ = table.append_child(&tr)?;
     }
 
     {
@@ -337,23 +341,23 @@ pub fn render_events_table_fn(
                 td.set_class_name("valueCells");
                 let date_string = it.date.format("%Y-%m-%d").to_string();
                 td.set_text_content(Some(&date_string));
-                tr.append_child(&td);
+                let _ = tr.append_child(&td)?;
             }
 
             {
                 let td = create_td(document)?;
                 td.set_inner_html(&it.summary.as_str());
-                let _ = tr.append_child(&td);
+                let _ = tr.append_child(&td)?;
             }
 
             {
                 // TODO call backs show more show less
                 let td = create_td(document)?;
                 td.set_inner_html(&it.details.as_str());
-                let _ = tr.append_child(&td);
+                let _ = tr.append_child(&td)?;
             }
 
-            let _ = tbody.append_child(&tr);
+            let _ = tbody.append_child(&tr)?;
 
             {
                 // TODO call backs show more/show less
@@ -367,14 +371,14 @@ pub fn render_events_table_fn(
                     let string = format!("{}, ", jt.to_str());
                     let _ = td.append_with_str_1(&string);
                 }
-                let _ = tr.append_child(&td);
+                let _ = tr.append_child(&td)?;
             }
 
-            let _ = tbody.append_child(&tr);
+            let _ = tbody.append_child(&tr)?;
         }
-        let _ = table.append_child(&tbody);
+        let _ = table.append_child(&tbody)?;
     }
-    let _ = div.append_child(&table);
+    let _ = div.append_child(&table)?;
 
     Ok(())
 }
@@ -399,7 +403,7 @@ pub fn render_selection_by_date_menu(
     active_month: usize,
     year: usize,
 ) -> Result<(), JsValue> {
-    let menu_div = create_div(document)?; // TODO move outside and replace body
+    let menu_div = create_div(document)?;
     menu_div.set_class_name("tab");
     menu_div.set_id(&format!("month_year_menu_{}", year));
 
@@ -491,7 +495,7 @@ pub fn render_year_dropdown(
                     if *year == *max_year {
                         let _ = year_option.set_selected(true);
                     }
-                    let _ = year_selection.append_child(&year_option);
+                    let _ = year_selection.append_child(&year_option)?;
                 }
                 console_log!("Create drop down. {}", input_year);
                 year_selection
@@ -500,7 +504,7 @@ pub fn render_year_dropdown(
     };
 
     console_log!("{:?}", year_selection);
-    let _ = menu_div.append_child(&year_selection);
+    let _ = menu_div.append_child(&year_selection)?;
     a.forget(); // TODO explain why this is need. https://github.com/rustwasm/wasm-bindgen/issues/843
 
     console_log!("completed dropdown. {}", input_year);
@@ -525,9 +529,9 @@ pub fn render_leadership_summary(
                 let _ = th.set_col_span(16); // TODO
                 let _ = th.set_text_content(Some("Monthly Summary"));
 
-                let _ = tr.append_child(&th);
+                let _ = tr.append_child(&th)?;
             }
-            let _ = table.append_child(&tr);
+            let _ = table.append_child(&tr)?;
 
             // TODO: describe what happening here.
             let tr = create_tr(document)?;
@@ -540,9 +544,9 @@ pub fn render_leadership_summary(
                 let th = create_th(document)?;
                 th.set_text_content(Some(it.to_str()));
 
-                let _ = tr.append_child(&th);
+                let _ = tr.append_child(&th)?;
             }
-            let _ = table.append_child(&tr);
+            let _ = table.append_child(&tr)?;
 
             // TODO: describe what happening here.
             let tr = create_tr(document)?;
@@ -567,12 +571,12 @@ pub fn render_leadership_summary(
                 let string = format!("{}", value);
                 th.set_text_content(Some(&string));
 
-                let _ = tr.append_child(&th);
+                let _ = tr.append_child(&th)?;
             }
 
-            let _ = table.append_child(&tr);
+            let _ = table.append_child(&tr)?;
         }
-        let _ = div.append_child(&table);
+        let _ = div.append_child(&table)?;
     }
 
     console_log!("end summary.");
@@ -587,16 +591,16 @@ pub fn render_legend(document: &web_sys::Document, body: &web_sys::Element) -> R
         let font = create_font(&document)?;
         let _ = font.set_color(C_BAR_RAISING);
         font.set_text_content(Some("  █"));
-        let _ = p.append_child(&font);
+        let _ = p.append_child(&font)?;
 
         let br = create_br(&document)?;
-        let _ = p.append_child(&br);
+        let _ = p.append_child(&br)?;
 
         p.append_with_str_1("Invest in yourself - ")?;
         let font = create_font(&document)?;
         let _ = font.set_color(C_INVEST_IN_YOURSELF);
         font.set_text_content(Some("  █"));
-        let _ = p.append_child(&font);
+        let _ = p.append_child(&font)?;
     }
     body.append_child(&p)?;
 
