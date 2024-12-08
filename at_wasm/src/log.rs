@@ -16,3 +16,4 @@ macro_rules! console_log {
         log(&format_args!("{file_name} : {line_number} -> {comment}").to_string())
     })
 }
+pub(crate) use console_log;
